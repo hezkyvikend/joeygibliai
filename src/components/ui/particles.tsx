@@ -164,23 +164,6 @@ export function Particles({
 
     const dpr = window.devicePixelRatio || 1
 
-    const resizeCanvas = () => {
-      if (!canvasContainerRef.current || !canvasRef.current || !contextRef.current) {
-        return
-      }
-
-      circlesRef.current = []
-      canvasSizeRef.current.w = canvasContainerRef.current.offsetWidth
-      canvasSizeRef.current.h = canvasContainerRef.current.offsetHeight
-
-      canvasRef.current.width = canvasSizeRef.current.w * dpr
-      canvasRef.current.height = canvasSizeRef.current.h * dpr
-      canvasRef.current.style.width = `${canvasSizeRef.current.w}px`
-      canvasRef.current.style.height = `${canvasSizeRef.current.h}px`
-
-      contextRef.current.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-
     const clearContext = () => {
       if (!contextRef.current) {
         return
@@ -228,6 +211,32 @@ export function Particles({
       if (!isUpdate) {
         circlesRef.current.push(circle)
       }
+    }
+
+    const resizeCanvas = () => {
+      if (!canvasContainerRef.current || !canvasRef.current || !contextRef.current) {
+        return
+      }
+
+      const nextWidth = canvasContainerRef.current.offsetWidth
+      const nextHeight = canvasContainerRef.current.offsetHeight
+
+      // Mobile browsers can emit transient resize events during scroll where one
+      // dimension is reported as 0; skip those to avoid blanking the canvas.
+      if (nextWidth === 0 || nextHeight === 0) {
+        return
+      }
+
+      circlesRef.current = []
+      canvasSizeRef.current.w = nextWidth
+      canvasSizeRef.current.h = nextHeight
+
+      canvasRef.current.width = canvasSizeRef.current.w * dpr
+      canvasRef.current.height = canvasSizeRef.current.h * dpr
+      canvasRef.current.style.width = `${canvasSizeRef.current.w}px`
+      canvasRef.current.style.height = `${canvasSizeRef.current.h}px`
+
+      contextRef.current.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
     const drawParticles = () => {
@@ -287,13 +296,20 @@ export function Particles({
       frameRef.current = window.requestAnimationFrame(animate)
     }
 
+    const handleResize = () => {
+      resizeCanvas()
+      drawParticles()
+    }
+
     resizeCanvas()
     drawParticles()
     animate()
 
-    window.addEventListener("resize", resizeCanvas)
+    window.addEventListener("resize", handleResize)
+    window.visualViewport?.addEventListener("resize", handleResize)
     return () => {
-      window.removeEventListener("resize", resizeCanvas)
+      window.removeEventListener("resize", handleResize)
+      window.visualViewport?.removeEventListener("resize", handleResize)
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current)
       }
